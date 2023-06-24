@@ -21,12 +21,11 @@ Note that you will need Python installed in order to run the script.
 3. Use a browser extension to obtain a cookies.txt file.
 Extensions are available for both
 [Chrome](https://chrome.google.com/webstore/search/cookies.txt) and
-[FireFox](https://addons.mozilla.org/en-US/firefox/search/?q=cookies.txt).
+[Firefox](https://addons.mozilla.org/en-US/firefox/search/?q=cookies.txt).
 I recommend [this](https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/)
-one for FireFox. Place this file in the same directory as the script.
+one for Firefox. Place this file in the same directory as the script.
 4. Open a terminal in the directory with the script and cookies.txt file in
-it. Run the script:
-```python3 main.py```
+it. Run the script with `python3 main.py`.
 5. Find the course you want to download the lectures for and copy the URL
 for the page that lists all the lectures.
 6. Paste the URL into the program and press enter.
