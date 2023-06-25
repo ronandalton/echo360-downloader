@@ -26,6 +26,91 @@ VIDEO_FILE_TYPE = "mp4"
 M3U8_URL_REGEX = r'\\"uri\\":\\"(https:\\/\\/.*?\\/s[0-2]_(?:a|v|av).m3u8)\?'
 
 
+def main():
+    args = sys.argv[1:]
+
+    if "-x" in args:
+        run_experimental_downloader()
+    else:
+        run_basic_downloader()
+
+
+def run_basic_downloader():
+    section_id = get_section_id()
+
+    try:
+        cookies = read_cookie_file(COOKIES_FILE, ECHO360_URL_NO_PREFIX)
+
+        if len(cookies) == 0:
+            sys.exit(f"Error: No cookies for {ECHO360_URL_NO_PREFIX} found")
+    except Exception as e:
+        sys.exit(f"Error reading cookies file: {e}")
+
+    print("Getting download info...")
+
+    try:
+        syllabus_json = download_syllabus(section_id, cookies)
+    except Exception as e:
+        sys.exit(f"Error getting lectures info: {e}")
+
+    try:
+        media_ids = extract_media_ids(syllabus_json)
+    except Exception as e:
+        sys.exit(f"Error parsing download info: {e}")
+
+    download_links = get_download_links(media_ids, HD_QUALITY)
+
+    print(f"{len(download_links)} lecture recordings found.")
+
+    try:
+        download_lessons(download_links, OUTPUT_DIRECTORY, cookies)
+    except Exception as e:
+        sys.exit(f"Error while downloading videos: {e}")
+
+    print("Download complete!")
+
+
+def run_experimental_downloader():
+    print("### Using experimental downloader ###")
+
+    section_id = get_section_id()
+
+    try:
+        cookies = read_cookie_file(COOKIES_FILE, ECHO360_URL_NO_PREFIX)
+
+        if len(cookies) == 0:
+            sys.exit(f"Error: No cookies for {ECHO360_URL_NO_PREFIX} found")
+    except Exception as e:
+        sys.exit(f"Error reading cookies file: {e}")
+
+    print("Getting download info (might take a bit)...")
+
+    try:
+        syllabus_json = download_syllabus(section_id, cookies)
+    except Exception as e:
+        sys.exit(f"Error getting lectures info: {e}")
+
+    try:
+        lesson_ids = extract_lesson_ids(syllabus_json)
+    except Exception as e:
+        sys.exit(f"Error parsing download info: {e}")
+
+    try:
+        m3u8_download_links = get_m3u8_download_links(lesson_ids, cookies)
+    except Exception as e:
+        sys.exit(f"Error getting download links: {e}")
+
+    print(f"{len(m3u8_download_links)} lecture recordings found.")
+
+    try:
+        download_lessons_m3u8_version(m3u8_download_links, OUTPUT_DIRECTORY,
+                                      COOKIES_FILE)
+    except Exception as e:
+        sys.exit(f"Error while downloading videos: {e}")
+
+    print("Download complete!")
+
+
 def get_section_id():
     while True:
         url = input("Enter URL: ").strip()
@@ -114,20 +199,6 @@ def extract_media_ids(syllabus_json):
         raise RuntimeError("Some fields missing (please report this!)")
 
 
-def extract_lesson_ids(syllabus_json):
-    try:
-        lesson_ids = []
-
-        for entry in syllabus_json['data']:
-            if entry['lesson']['hasContent'] is True and \
-                    entry['lesson']['hasVideo'] is True:
-                lesson_ids.append(entry['lesson']['lesson']['id'])
-
-        return lesson_ids
-    except Exception:
-        raise RuntimeError("Some fields missing (please report this!)")
-
-
 def get_download_links(media_ids, hd_version=True):
     download_links = []  # list of lists of links for each lesson
 
@@ -143,35 +214,6 @@ def get_download_links(media_ids, hd_version=True):
             lesson_video_links.append(video_url)
 
         download_links.append(lesson_video_links)
-
-    return download_links
-
-
-def get_m3u8_download_links(lesson_ids, cookies):
-    download_links = []  # list of lists of links for each lesson
-
-    for lesson_id in lesson_ids:
-        page_url = f"{ECHO360_URL}/lesson/{lesson_id}/classroom"
-
-        response = requests.get(page_url, cookies=cookies)
-
-        response.raise_for_status()
-
-        urls_found = list(set(re.findall(M3U8_URL_REGEX, response.text)))
-        urls_found = list(filter(lambda url: url.endswith("s1_av.m3u8") or
-                          url.endswith("s2_av.m3u8"), urls_found))
-
-        if len(urls_found) == 0:
-            raise RuntimeError("No video URLs found")
-        elif len(urls_found) != 2:
-            raise RuntimeError("Unexpected number of video URLs found")
-
-        urls_found = list(map(lambda url: url.replace(r"\/", "/"), urls_found))
-
-        if urls_found[0].endswith("s2_av.m3u8"):
-            urls_found = urls_found[::-1]
-
-        download_links.append(urls_found)
 
     return download_links
 
@@ -205,6 +247,49 @@ def download_videos(video_urls, output_dir, cookies):
                 handle.write(block)
 
 
+def extract_lesson_ids(syllabus_json):
+    try:
+        lesson_ids = []
+
+        for entry in syllabus_json['data']:
+            if entry['lesson']['hasContent'] is True and \
+                    entry['lesson']['hasVideo'] is True:
+                lesson_ids.append(entry['lesson']['lesson']['id'])
+
+        return lesson_ids
+    except Exception:
+        raise RuntimeError("Some fields missing (please report this!)")
+
+
+def get_m3u8_download_links(lesson_ids, cookies):
+    download_links = []  # list of lists of links for each lesson
+
+    for lesson_id in lesson_ids:
+        page_url = f"{ECHO360_URL}/lesson/{lesson_id}/classroom"
+
+        response = requests.get(page_url, cookies=cookies)
+
+        response.raise_for_status()
+
+        urls_found = list(set(re.findall(M3U8_URL_REGEX, response.text)))
+        urls_found = list(filter(lambda url: url.endswith("s1_av.m3u8") or
+                          url.endswith("s2_av.m3u8"), urls_found))
+
+        if len(urls_found) == 0:
+            raise RuntimeError("No video URLs found")
+        elif len(urls_found) != 2:
+            raise RuntimeError("Unexpected number of video URLs found")
+
+        urls_found = list(map(lambda url: url.replace(r"\/", "/"), urls_found))
+
+        if urls_found[0].endswith("s2_av.m3u8"):
+            urls_found = urls_found[::-1]
+
+        download_links.append(urls_found)
+
+    return download_links
+
+
 def download_lessons_m3u8_version(download_links, output_dir, cookies_file):
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
@@ -229,91 +314,6 @@ def download_m3u8_videos(video_urls, output_dir, cookies_file):
 
         subprocess.run(["yt-dlp", "--cookies", cookies_file, "--output",
                         video_file_name, video_url])
-
-
-def run_basic_downloader():
-    section_id = get_section_id()
-
-    try:
-        cookies = read_cookie_file(COOKIES_FILE, ECHO360_URL_NO_PREFIX)
-
-        if len(cookies) == 0:
-            sys.exit(f"Error: No cookies for {ECHO360_URL_NO_PREFIX} found")
-    except Exception as e:
-        sys.exit(f"Error reading cookies file: {e}")
-
-    print("Getting download info...")
-
-    try:
-        syllabus_json = download_syllabus(section_id, cookies)
-    except Exception as e:
-        sys.exit(f"Error getting lectures info: {e}")
-
-    try:
-        media_ids = extract_media_ids(syllabus_json)
-    except Exception as e:
-        sys.exit(f"Error parsing download info: {e}")
-
-    download_links = get_download_links(media_ids, HD_QUALITY)
-
-    print(f"{len(download_links)} lecture recordings found.")
-
-    try:
-        download_lessons(download_links, OUTPUT_DIRECTORY, cookies)
-    except Exception as e:
-        sys.exit(f"Error while downloading videos: {e}")
-
-    print("Download complete!")
-
-
-def run_experimental_downloader():
-    print("### Using experimental downloader ###")
-
-    section_id = get_section_id()
-
-    try:
-        cookies = read_cookie_file(COOKIES_FILE, ECHO360_URL_NO_PREFIX)
-
-        if len(cookies) == 0:
-            sys.exit(f"Error: No cookies for {ECHO360_URL_NO_PREFIX} found")
-    except Exception as e:
-        sys.exit(f"Error reading cookies file: {e}")
-
-    print("Getting download info (might take a bit)...")
-
-    try:
-        syllabus_json = download_syllabus(section_id, cookies)
-    except Exception as e:
-        sys.exit(f"Error getting lectures info: {e}")
-
-    try:
-        lesson_ids = extract_lesson_ids(syllabus_json)
-    except Exception as e:
-        sys.exit(f"Error parsing download info: {e}")
-
-    try:
-        m3u8_download_links = get_m3u8_download_links(lesson_ids, cookies)
-    except Exception as e:
-        sys.exit(f"Error getting download links: {e}")
-
-    print(f"{len(m3u8_download_links)} lecture recordings found.")
-
-    try:
-        download_lessons_m3u8_version(m3u8_download_links, OUTPUT_DIRECTORY,
-                                      COOKIES_FILE)
-    except Exception as e:
-        sys.exit(f"Error while downloading videos: {e}")
-
-    print("Download complete!")
-
-
-def main():
-    args = sys.argv[1:]
-
-    if "-x" in args:
-        run_experimental_downloader()
-    else:
-        run_basic_downloader()
 
 
 if __name__ == '__main__':
