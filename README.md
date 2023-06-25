@@ -4,7 +4,7 @@ This script allows you to download all of your lecture recordings
 from the Echo360 website (https://echo360.net.au), without having
 to manually click on each download button separately.
 
-## Limitations:
+## Limitations
 
 - Designed to work for New Zealand universities, may not work
 in other countries.
@@ -14,7 +14,7 @@ attempt to bypass this restriction (see below for details), however
 I would recommend just emailing your lecturer nicely and asking them
 to enable downloads :)
 
-## Usage:
+## Usage
 
 1. Download the script and place it in a new directory somewhere.
 Note that you will need Python installed in order to run the script.
@@ -32,7 +32,7 @@ for the page that lists all the lectures.
 6. Paste the URL into the program and press enter.
 7. Lectures will be downloaded into the "output" folder.
 
-## Experimental Mode:
+## Experimental Mode
 
 There is a new experimental mode that attempts to download lectures,
 even if the download option hasn't been enabled (no download button
@@ -44,12 +44,12 @@ and [ffmpeg](https://ffmpeg.org/) installed for this to work. If you get
 into a video first and then creating a cookies.txt file, or logging out
 and back in.
 
-## Config:
+## Config
 
 There are no command line configuration options at the moment, but
 there are some constants at the top of the script that can be set.
 
-## Issues:
+## Issues
 
 If you find any issues with this script or the Echo360 website updates
 and causes the script to break, create an issue on the issue tracker
