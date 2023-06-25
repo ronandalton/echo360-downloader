@@ -44,7 +44,12 @@ and [ffmpeg](https://ffmpeg.org/) installed for this to work. If you get
 into a video first and then creating a cookies.txt file, or logging out
 and back in.
 
-## Issues
+## Config:
+
+There are no command line configuration options at the moment, but
+there are some constants at the top of the script that can be set.
+
+## Issues:
 
 If you find any issues with this script or the Echo360 website updates
 and causes the script to break, create an issue on the issue tracker
