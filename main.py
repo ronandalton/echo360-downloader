@@ -2,7 +2,7 @@
 
 """ A bulk downloader script for Echo360 lecture recordings. """
 
-# Last updated 2023-06-24
+# Last updated 2023-06-25
 
 import requests
 import os
