@@ -6,7 +6,7 @@ to manually click on each download button separately.
 
 ## Limitations
 
-- Designed to work for New Zealand universities, may not work
+- Designed to work for New Zealand universities, may or may not work
 in other countries.
 - Downloading is only supported for courses that have the download
 option enabled. There is an experimental mode that you can use to
