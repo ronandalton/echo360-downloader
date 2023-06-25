@@ -46,6 +46,10 @@ def read_cookie_file(file_name, target_domain):
     if data[0] not in ["# Netscape HTTP Cookie File", "# HTTP Cookie File"]:
         raise RuntimeError("Not a recognized cookie file")
 
+    for i, line in enumerate(data):
+        if line.startswith("#HttpOnly_"):
+            data[i] = line[10:]
+
     for line in data:
         if len(line) == 0 or line[0] == '#':
             continue
