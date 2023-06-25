@@ -17,6 +17,7 @@ import subprocess
 HD_QUALITY = True  # only applies to basic downloader
 OUTPUT_DIRECTORY = "output"
 COOKIES_FILE = "cookies.txt"
+YT_DLP_EXECUTABLE = "yt-dlp"
 
 ECHO360_URL_NO_PREFIX = "echo360.net.au"
 ECHO360_URL = f"https://{ECHO360_URL_NO_PREFIX}"
@@ -312,8 +313,8 @@ def download_m3u8_videos(video_urls, output_dir, cookies_file):
 
         video_file_name = os.path.join(output_dir, f"vid_{index + 1}.mp4")
 
-        subprocess.run(["yt-dlp", "--cookies", cookies_file, "--output",
-                        video_file_name, video_url])
+        subprocess.run([YT_DLP_EXECUTABLE, "--cookies", cookies_file,
+                        "--output", video_file_name, video_url])
 
 
 if __name__ == '__main__':
