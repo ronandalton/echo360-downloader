@@ -9,9 +9,10 @@ to manually click on each download button separately.
 - Designed to work for New Zealand universities, may not work
 in other countries.
 - Downloading is only supported for courses that have the download
-option enabled. If downloading is disabled (which is the default),
-I recommend emailing your lecturer nicely and asking them to enable
-downloading :)
+option enabled. There is an experimental mode that you can use to
+attempt to bypass this restriction (see below for details), however
+I would recommend just emailing your lecturer nicely and asking them
+to enable downloads :)
 
 ## Usage:
 
@@ -30,6 +31,18 @@ it. Run the script with `python3 main.py`.
 for the page that lists all the lectures.
 6. Paste the URL into the program and press enter.
 7. Lectures will be downloaded into the "output" folder.
+
+## Experimental Mode:
+
+There is a new experimental mode that attempts to download lectures,
+even if the download option hasn't been enabled (no download button
+in the user interface). To enable this mode you must pass the '-x'
+command line option to the script when you run it, eg. `python3 main.py -x`.
+Note that you will need to have [yt-dlp](https://github.com/yt-dlp/yt-dlp)
+and [ffmpeg](https://ffmpeg.org/) installed for this to work. If you get
+403 errors, it is probably an issue with your cookies file. Try clicking
+into a video first and then creating a cookies.txt file, or logging out
+and back in.
 
 ## Issues
 
