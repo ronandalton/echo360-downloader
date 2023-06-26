@@ -7,3 +7,5 @@
   This should prevent a bunch of empty folders from being created for lectures
   that failed to download.
 - Add ability to pass URL on command line.
+- Figure out way to detect when videos are not downloadable and automatically
+  use x mode.
