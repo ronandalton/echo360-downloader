@@ -38,8 +38,6 @@ def main():
 
 
 def run_basic_downloader():
-    section_id = get_section_id()
-
     try:
         cookies = read_cookie_file(COOKIES_FILE, ECHO360_URL_NO_PREFIX)
 
@@ -47,6 +45,8 @@ def run_basic_downloader():
             sys.exit(f"Error: No cookies for {ECHO360_URL_NO_PREFIX} found")
     except Exception as e:
         sys.exit(f"Error reading cookies file: {e}")
+
+    section_id = get_section_id()
 
     print("Getting download info...")
 
@@ -75,8 +75,6 @@ def run_basic_downloader():
 def run_experimental_downloader():
     print("### Using experimental downloader ###")
 
-    section_id = get_section_id()
-
     try:
         cookies = read_cookie_file(COOKIES_FILE, ECHO360_URL_NO_PREFIX)
 
@@ -84,6 +82,8 @@ def run_experimental_downloader():
             sys.exit(f"Error: No cookies for {ECHO360_URL_NO_PREFIX} found")
     except Exception as e:
         sys.exit(f"Error reading cookies file: {e}")
+
+    section_id = get_section_id()
 
     print("Getting download info...")
 
