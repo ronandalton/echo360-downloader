@@ -6,3 +6,4 @@
 - Check if external download failed in experimental mode and stop the script.
   This should prevent a bunch of empty folders from being created for lectures
   that failed to download.
+- Add ability to pass URL on command line.
