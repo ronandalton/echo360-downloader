@@ -1,0 +1,5 @@
+- Implement downloading of individual lectures. Mostly useful for x mode.
+- Detect base URL detection to automatically handle URLs other than
+  echo360.net.au, such as echo360.com.
+- Use http.cookiejar to read cookie file.
+- Save cookies returned after each request. This might fix the 403 errors.
