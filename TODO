@@ -3,3 +3,6 @@
   echo360.net.au, such as echo360.com.
 - Use http.cookiejar to read cookie file.
 - Save cookies returned after each request. This might fix the 403 errors.
+- Check if external download failed in experimental mode and stop the script.
+  This should prevent a bunch of empty folders from being created for lectures
+  that failed to download.
