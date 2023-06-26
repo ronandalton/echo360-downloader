@@ -16,7 +16,7 @@ to enable downloads :)
 
 ## Usage
 
-1. Download the script and place it in a new directory somewhere.
+1. Download the script (main.py) and place it in a new directory somewhere.
 Note that you will need Python installed in order to run the script.
 2. Log into the Echo360 site using your web browser.
 3. Use a browser extension to obtain a cookies.txt file.
