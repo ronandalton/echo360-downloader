@@ -85,7 +85,7 @@ def run_experimental_downloader():
     except Exception as e:
         sys.exit(f"Error reading cookies file: {e}")
 
-    print("Getting download info (might take a bit)...")
+    print("Getting download info...")
 
     try:
         syllabus_json = download_syllabus(section_id, cookies)
@@ -97,16 +97,11 @@ def run_experimental_downloader():
     except Exception as e:
         sys.exit(f"Error parsing download info: {e}")
 
-    try:
-        m3u8_download_links = get_m3u8_download_links(lesson_ids, cookies)
-    except Exception as e:
-        sys.exit(f"Error getting download links: {e}")
-
-    print(f"{len(m3u8_download_links)} lecture recordings found.")
+    print(f"{len(lesson_ids)} lecture recordings found.")
 
     try:
-        download_lessons_m3u8_version(m3u8_download_links, OUTPUT_DIRECTORY,
-                                      COOKIES_FILE)
+        download_lessons_m3u8_version(lesson_ids, OUTPUT_DIRECTORY,
+                                      cookies, COOKIES_FILE)
     except Exception as e:
         sys.exit(f"Error while downloading videos: {e}")
 
@@ -263,46 +258,46 @@ def extract_lesson_ids(syllabus_json):
         raise RuntimeError("Some fields missing (please report this!)")
 
 
-def get_m3u8_download_links(lesson_ids, cookies):
-    download_links = []  # list of lists of links for each lesson
-
-    for lesson_id in lesson_ids:
-        page_url = f"{ECHO360_URL}/lesson/{lesson_id}/classroom"
-
-        response = requests.get(page_url, cookies=cookies)
-
-        response.raise_for_status()
-
-        urls_found = list(set(re.findall(M3U8_URL_REGEX, response.text)))
-        urls_found = list(filter(lambda url: url.endswith("s1_av.m3u8") or
-                          url.endswith("s2_av.m3u8"), urls_found))
-
-        if len(urls_found) == 0:
-            raise RuntimeError("No video URLs found")
-        elif len(urls_found) != 2:
-            raise RuntimeError("Unexpected number of video URLs found")
-
-        urls_found = list(map(lambda url: url.replace(r"\/", "/"), urls_found))
-
-        if urls_found[0].endswith("s2_av.m3u8"):
-            urls_found = urls_found[::-1]
-
-        download_links.append(urls_found)
-
-    return download_links
-
-
-def download_lessons_m3u8_version(download_links, output_dir, cookies_file):
+def download_lessons_m3u8_version(lesson_ids, output_dir, cookies,
+                                  cookies_file):
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
 
-    for lesson_index, lesson_video_urls in enumerate(download_links):
+    for lesson_index, lesson_id in enumerate(lesson_ids):
+        print(f"Lecture {lesson_index + 1}:")
+
+        print("    Downloading webpage...")
+        lesson_video_urls = get_m3u8_download_links(lesson_id, cookies)
+
         lesson_folder_name = f"Lecture {lesson_index + 1}"
         lesson_output_dir = os.path.join(output_dir, lesson_folder_name)
 
-        print(f"Lecture {lesson_index + 1}:")
         download_m3u8_videos(lesson_video_urls, lesson_output_dir,
                              cookies_file)
+
+
+def get_m3u8_download_links(lesson_id, cookies):
+    page_url = f"{ECHO360_URL}/lesson/{lesson_id}/classroom"
+
+    response = requests.get(page_url, cookies=cookies)
+
+    response.raise_for_status()
+
+    urls_found = list(set(re.findall(M3U8_URL_REGEX, response.text)))
+    urls_found = list(filter(lambda url: url.endswith("s1_av.m3u8") or
+                      url.endswith("s2_av.m3u8"), urls_found))
+
+    if len(urls_found) == 0:
+        raise RuntimeError("No video URLs found")
+    elif len(urls_found) != 2:
+        raise RuntimeError("Unexpected number of video URLs found")
+
+    urls_found = list(map(lambda url: url.replace(r"\/", "/"), urls_found))
+
+    if urls_found[0].endswith("s2_av.m3u8"):
+        urls_found = urls_found[::-1]
+
+    return urls_found
 
 
 def download_m3u8_videos(video_urls, output_dir, cookies_file):
