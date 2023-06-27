@@ -28,9 +28,10 @@ one for Firefox. Place this file in the same directory as the script.
 4. Open a terminal in the directory with the script and cookies.txt file in
 it. Run the script with `python3 main.py`.
 5. Find the course you want to download the lectures for and copy the URL
-for the page that lists all the lectures.
-6. Paste the URL into the program and press enter.
-7. Lectures will be downloaded into the "output" folder.
+for the page that lists all the lectures. You can also download a single
+lecture by copying the URL while on the video page for that lecture.
+7. Paste the URL into the program and press enter.
+8. Lectures will be downloaded into the "output" folder.
 
 ## Experimental Mode
 
