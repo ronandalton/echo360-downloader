@@ -26,8 +26,10 @@ CONCURRENT_DOWNLOAD_FRAGMENTS = 40  # only applies to experimental downloader
 
 ECHO360_URL_NO_PREFIX = "echo360.net.au"
 ECHO360_URL = f"https://{ECHO360_URL_NO_PREFIX}"
-EXAMPLE_URL = f"{ECHO360_URL}/section/xxxxxx/home"
-URL_REGEX = r"^" + re.escape(ECHO360_URL) + r"/section/([0-9a-f-]+)/home$"
+SECTION_URL_REGEX = r"^" + re.escape(ECHO360_URL) + r"/section/([^/]+)/home"
+LESSON_URL_REGEX = r"^" + re.escape(ECHO360_URL) + r"/lesson/([^/]+)/classroom"
+EXAMPLE_SECTION_URL = f"{ECHO360_URL}/section/xxxxxx/home"
+EXAMPLE_LESSON_URL = f"{ECHO360_URL}/lesson/xxxxxx/classroom"
 VIDEO_FILE_TYPE = "mp4"
 M3U8_URL_REGEX = r'\\"uri\\":\\"(https:\\/\\/.*?\\/s[0-2]_(?:a|v|av).m3u8)\?'
 
@@ -53,8 +55,37 @@ def run_downloader(experimental_downloader=False):
     except Exception as e:
         sys.exit(f"Error reading cookies file: {e}")
 
-    section_id = get_section_id()
+    url_type, page_id = get_download_target_from_user()
 
+    if url_type == 'section':
+        download_multiple_lessons(page_id, cookies, experimental_downloader)
+    elif url_type == 'lesson':
+        download_single_lesson(page_id, cookies, experimental_downloader)
+
+
+def get_download_target_from_user():
+    while True:
+        url = input("Enter URL: ").strip()
+
+        match = re.search(SECTION_URL_REGEX, url)
+
+        if match is not None:
+            section_id = match.group(1)
+            return 'section', section_id
+
+        match = re.search(LESSON_URL_REGEX, url)
+
+        if match is not None:
+            lesson_id = match.group(1)
+            return 'lesson', lesson_id
+
+        print("Error: Invalid URL format.")
+        print("       Expected a URL that looks like one of the following:")
+        for example_url in [EXAMPLE_SECTION_URL, EXAMPLE_LESSON_URL]:
+            print(f"       - {example_url}")
+
+
+def download_multiple_lessons(section_id, cookies, experimental_downloader):
     print("Getting download info...")
 
     try:
@@ -76,22 +107,24 @@ def run_downloader(experimental_downloader=False):
         else:
             download_lessons(lesson_ids, OUTPUT_DIRECTORY, cookies)
     except Exception as e:
-        sys.exit(f"Error while downloading videos: {e}")
+        sys.exit(f"Error while downloading lectures: {e}")
 
     print("Download complete!")
 
 
-def get_section_id():
-    while True:
-        url = input("Enter URL: ").strip()
+def download_single_lesson(lesson_id, cookies, experimental_downloader):
+    print("Downloading lecture:")
 
-        match = re.search(URL_REGEX, url)
+    try:
+        if experimental_downloader:
+            download_lesson_experimental_version(lesson_id, OUTPUT_DIRECTORY,
+                                                 cookies, COOKIES_FILE)
+        else:
+            download_lesson_basic_version(lesson_id, OUTPUT_DIRECTORY, cookies)
+    except Exception as e:
+        sys.exit(f"Error while downloading lecture: {e}")
 
-        if match is not None:
-            return match.group(1)
-
-        print("Error: Invalid URL format.")
-        print(f"       Expected a URL that looks like {EXAMPLE_URL}")
+    print("Download complete!")
 
 
 def read_cookies_file(file_name, target_domain):
@@ -193,37 +226,47 @@ def download_lesson_basic_version(lesson_id, output_dir, cookies):
 
 
 def get_media_download_links(lesson_id, cookies):
-    data = download_lesson_info(lesson_id, cookies)
+    lesson_info = download_lesson_info(lesson_id, cookies)
 
-    media_urls = []
+    try:
+        if lesson_info['data'][0]['hasContent'] is False or \
+                lesson_info['data'][0]['hasVideo'] is False:
+            return []
 
-    media = data['data'][0]['video']['media']['media']['current']
+        media_urls = []
 
-    for key in ["primaryFiles", "secondaryFiles", "tertiaryFiles",
-                "quaternaryFiles"]:
-        versions = media[key]
+        media = lesson_info['data'][0]['video']['media']['media']['current']
 
-        if len(versions) == 0:
-            continue
+        for key in ["primaryFiles", "secondaryFiles", "tertiaryFiles",
+                    "quaternaryFiles"]:
+            versions = media[key]
 
-        if len(versions) != 2:
-            raise RuntimeError(
-                    "Unexpected number of video quality types found")
+            if len(versions) == 0:
+                continue
 
-        if versions[0]['width'] > versions[1]['width']:
-            versions = versions[::-1]
+            if len(versions) != 2:
+                raise RuntimeError(
+                        "Unexpected number of video quality types found")
 
-        if DOWNLOAD_SD_VIDEO_FILES:
-            media_urls.append(versions[0]['s3Url'])
+            if versions[0]['width'] > versions[1]['width']:
+                versions = versions[::-1]
 
-        if DOWNLOAD_HD_VIDEO_FILES:
-            media_urls.append(versions[1]['s3Url'])
+            if DOWNLOAD_SD_VIDEO_FILES:
+                media_urls.append(versions[0]['s3Url'])
 
-    if DOWNLOAD_AUDIO_FILES:
-        for file_info in media["audioFiles"]:
-            media_urls.append(file_info['s3Url'])
+            if DOWNLOAD_HD_VIDEO_FILES:
+                media_urls.append(versions[1]['s3Url'])
 
-    return media_urls
+        if DOWNLOAD_AUDIO_FILES:
+            for file_info in media["audioFiles"]:
+                media_urls.append(file_info['s3Url'])
+
+        return media_urls
+    except RuntimeError as e:
+        raise e
+    except Exception:
+        raise RuntimeError("Some fields missing while parsing lesson info "
+                           "(please report this!)")
 
 
 def download_lesson_info(lesson_id, cookies):
