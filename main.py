@@ -46,7 +46,7 @@ def run_downloader(experimental_downloader=False):
         print("### Using experimental downloader ###")
 
     try:
-        cookies = read_cookie_file(COOKIES_FILE, ECHO360_URL_NO_PREFIX)
+        cookies = read_cookies_file(COOKIES_FILE, ECHO360_URL_NO_PREFIX)
 
         if len(cookies) == 0:
             sys.exit(f"Error: No cookies for {ECHO360_URL_NO_PREFIX} found")
@@ -94,7 +94,7 @@ def get_section_id():
         print(f"       Expected a URL that looks like {EXAMPLE_URL}")
 
 
-def read_cookie_file(file_name, target_domain):
+def read_cookies_file(file_name, target_domain):
     cookies = dict()
 
     with open(file_name) as file:
