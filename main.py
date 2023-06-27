@@ -5,19 +5,23 @@
     option if downloading is not enabled for your course.
     Note that yt-dlp and ffmpeg must be installed for this option to work. """
 
-# Last updated 2023-06-26
+# Last updated 2023-06-27
 
 import requests
 import os
 import sys
 import re
 import subprocess
+from urllib.parse import urlparse, unquote
 
 
-HD_QUALITY = True  # only applies to basic downloader
 OUTPUT_DIRECTORY = "output"
 COOKIES_FILE = "cookies.txt"
 YT_DLP_EXECUTABLE = "yt-dlp"
+# the following 3 options only apply to the basic downloader
+DOWNLOAD_SD_VIDEO_FILES = False
+DOWNLOAD_HD_VIDEO_FILES = True
+DOWNLOAD_AUDIO_FILES = False
 CONCURRENT_DOWNLOAD_FRAGMENTS = 40  # only applies to experimental downloader
 
 ECHO360_URL_NO_PREFIX = "echo360.net.au"
@@ -32,48 +36,14 @@ def main():
     args = sys.argv[1:]
 
     if "-x" in args:
-        run_experimental_downloader()
+        run_downloader(True)
     else:
-        run_basic_downloader()
+        run_downloader(False)
 
 
-def run_basic_downloader():
-    try:
-        cookies = read_cookie_file(COOKIES_FILE, ECHO360_URL_NO_PREFIX)
-
-        if len(cookies) == 0:
-            sys.exit(f"Error: No cookies for {ECHO360_URL_NO_PREFIX} found")
-    except Exception as e:
-        sys.exit(f"Error reading cookies file: {e}")
-
-    section_id = get_section_id()
-
-    print("Getting download info...")
-
-    try:
-        syllabus_json = download_syllabus(section_id, cookies)
-    except Exception as e:
-        sys.exit(f"Error getting lectures info: {e}")
-
-    try:
-        media_ids = extract_media_ids(syllabus_json)
-    except Exception as e:
-        sys.exit(f"Error parsing download info: {e}")
-
-    download_links = get_download_links(media_ids, HD_QUALITY)
-
-    print(f"{len(download_links)} lecture recordings found.")
-
-    try:
-        download_lessons(download_links, OUTPUT_DIRECTORY, cookies)
-    except Exception as e:
-        sys.exit(f"Error while downloading videos: {e}")
-
-    print("Download complete!")
-
-
-def run_experimental_downloader():
-    print("### Using experimental downloader ###")
+def run_downloader(experimental_downloader=False):
+    if experimental_downloader:
+        print("### Using experimental downloader ###")
 
     try:
         cookies = read_cookie_file(COOKIES_FILE, ECHO360_URL_NO_PREFIX)
@@ -100,8 +70,11 @@ def run_experimental_downloader():
     print(f"{len(lesson_ids)} lecture recordings found.")
 
     try:
-        download_lessons_m3u8_version(lesson_ids, OUTPUT_DIRECTORY,
-                                      cookies, COOKIES_FILE)
+        if experimental_downloader:
+            download_lessons(lesson_ids, OUTPUT_DIRECTORY, cookies, True,
+                             COOKIES_FILE)
+        else:
+            download_lessons(lesson_ids, OUTPUT_DIRECTORY, cookies)
     except Exception as e:
         sys.exit(f"Error while downloading videos: {e}")
 
@@ -176,74 +149,6 @@ def download_syllabus(section_id, cookies):
         raise RuntimeError("Could not parse response")
 
 
-def extract_media_ids(syllabus_json):
-    try:
-        media_ids = []
-
-        for entry in syllabus_json['data']:
-            medias = entry['lesson']['medias']
-
-            medias = list(filter(lambda media: media['mediaType'] == 'Video'
-                                 and media['isAvailable'] is True, medias))
-
-            if len(medias) == 0:
-                continue
-
-            media_ids.append(medias[0]['id'])
-
-        return media_ids
-    except Exception:
-        raise RuntimeError("Some fields missing (please report this!)")
-
-
-def get_download_links(media_ids, hd_version=True):
-    download_links = []  # list of lists of links for each lesson
-
-    base_url = f"{ECHO360_URL}/media/download"
-    quality = "hd" if hd_version else "sd"
-    file_type = VIDEO_FILE_TYPE
-
-    for media_id in media_ids:
-        lesson_video_links = []
-
-        for num in [1, 2]:
-            video_url = f"{base_url}/{media_id}/{quality}{num}.{file_type}"
-            lesson_video_links.append(video_url)
-
-        download_links.append(lesson_video_links)
-
-    return download_links
-
-
-def download_lessons(download_links, output_dir, cookies):
-    if not os.path.isdir(output_dir):
-        os.makedirs(output_dir)
-
-    for lesson_index, lesson_video_urls in enumerate(download_links):
-        lesson_folder_name = f"Lecture {lesson_index + 1}"
-        lesson_output_dir = os.path.join(output_dir, lesson_folder_name)
-
-        print(f"Lecture {lesson_index + 1}:")
-        download_videos(lesson_video_urls, lesson_output_dir, cookies)
-
-
-def download_videos(video_urls, output_dir, cookies):
-    if not os.path.isdir(output_dir):
-        os.makedirs(output_dir)
-
-    for index, video_url in enumerate(video_urls):
-        print(f"    Downloading video {index + 1}...")
-
-        video_file_name = os.path.join(output_dir, f"vid_{index + 1}.mp4")
-
-        response = requests.get(video_url, cookies=cookies, stream=True)
-        response.raise_for_status()
-
-        with open(video_file_name, 'wb') as handle:
-            for block in response.iter_content(1024):
-                handle.write(block)
-
-
 def extract_lesson_ids(syllabus_json):
     try:
         lesson_ids = []
@@ -258,22 +163,108 @@ def extract_lesson_ids(syllabus_json):
         raise RuntimeError("Some fields missing (please report this!)")
 
 
-def download_lessons_m3u8_version(lesson_ids, output_dir, cookies,
-                                  cookies_file):
+def download_lessons(lesson_ids, output_dir, cookies,
+                     experimental_version=False, cookies_file=None):
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
 
     for lesson_index, lesson_id in enumerate(lesson_ids):
         print(f"Lecture {lesson_index + 1}:")
 
-        print("    Downloading webpage...")
-        lesson_video_urls = get_m3u8_download_links(lesson_id, cookies)
+        lesson_output_dir = os.path.join(output_dir,
+                                         f"Lecture {lesson_index + 1}")
 
-        lesson_folder_name = f"Lecture {lesson_index + 1}"
-        lesson_output_dir = os.path.join(output_dir, lesson_folder_name)
+        if experimental_version:
+            download_lesson_experimental_version(lesson_id, lesson_output_dir,
+                                                 cookies, cookies_file)
+        else:
+            download_lesson_basic_version(lesson_id, lesson_output_dir,
+                                          cookies)
 
-        download_m3u8_videos(lesson_video_urls, lesson_output_dir,
-                             cookies_file)
+
+def download_lesson_basic_version(lesson_id, output_dir, cookies):
+    print("    Downloading lecture info...")
+    lesson_media_urls = get_media_download_links(lesson_id, cookies)
+
+    if len(lesson_media_urls) == 0:
+        raise RuntimeError("No downloadable content found for lecture")
+
+    download_medias(lesson_media_urls, output_dir, cookies)
+
+
+def get_media_download_links(lesson_id, cookies):
+    data = download_lesson_info(lesson_id, cookies)
+
+    media_urls = []
+
+    media = data['data'][0]['video']['media']['media']['current']
+
+    for key in ["primaryFiles", "secondaryFiles", "tertiaryFiles",
+                "quaternaryFiles"]:
+        versions = media[key]
+
+        if len(versions) == 0:
+            continue
+
+        if len(versions) != 2:
+            raise RuntimeError(
+                    "Unexpected number of video quality types found")
+
+        if versions[0]['width'] > versions[1]['width']:
+            versions = versions[::-1]
+
+        if DOWNLOAD_SD_VIDEO_FILES:
+            media_urls.append(versions[0]['s3Url'])
+
+        if DOWNLOAD_HD_VIDEO_FILES:
+            media_urls.append(versions[1]['s3Url'])
+
+    if DOWNLOAD_AUDIO_FILES:
+        for file_info in media["audioFiles"]:
+            media_urls.append(file_info['s3Url'])
+
+    return media_urls
+
+
+def download_lesson_info(lesson_id, cookies):
+    url = f"{ECHO360_URL}/lesson/{lesson_id}/media"
+    response = requests.get(url, cookies=cookies)
+
+    response.raise_for_status()
+
+    if not response.headers['content-type'].startswith('application/json'):
+        raise RuntimeError("Bad response (are your cookies up to date?)")
+
+    try:
+        return response.json()
+    except Exception:
+        raise RuntimeError("Could not parse response")
+
+
+def download_medias(media_urls, output_dir, cookies):
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+
+    for index, media_url in enumerate(media_urls):
+        print(f"    Downloading media file {index + 1}...")
+
+        file_name = unquote(urlparse(media_url).path).split("/")[-1]
+
+        response = requests.get(media_url, cookies=cookies, stream=True)
+        response.raise_for_status()
+
+        with open(os.path.join(output_dir, file_name), 'wb') as handle:
+            for block in response.iter_content(1024):
+                handle.write(block)
+
+
+def download_lesson_experimental_version(lesson_id, output_dir, cookies,
+                                         cookies_file):
+    print("    Downloading webpage...")
+    lesson_video_urls = get_m3u8_download_links(lesson_id, cookies)
+
+    download_m3u8_videos(lesson_video_urls, output_dir,
+                         cookies_file)
 
 
 def get_m3u8_download_links(lesson_id, cookies):
@@ -307,7 +298,7 @@ def download_m3u8_videos(video_urls, output_dir, cookies_file):
     for index, video_url in enumerate(video_urls):
         print(f"    Downloading video {index + 1}...")
 
-        video_file_name = os.path.join(output_dir, f"vid_{index + 1}.mp4")
+        video_file_name = os.path.join(output_dir, f"hd{index + 1}.mp4")
 
         subprocess.run([YT_DLP_EXECUTABLE, "--cookies", cookies_file,
                         "--concurrent-fragments",
