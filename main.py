@@ -334,18 +334,14 @@ def get_m3u8_download_links(lesson_id, cookies):
     response.raise_for_status()
 
     urls_found = list(set(re.findall(M3U8_URL_REGEX, response.text)))
-    urls_found = list(filter(lambda url: url.endswith("s1_av.m3u8") or
-                      url.endswith("s2_av.m3u8"), urls_found))
+    urls_found = list(filter(lambda url: url.endswith("_av.m3u8"), urls_found))
 
     if len(urls_found) == 0:
         raise RuntimeError("No video URLs found")
-    elif len(urls_found) != 2:
-        raise RuntimeError("Unexpected number of video URLs found")
 
     urls_found = list(map(lambda url: url.replace(r"\/", "/"), urls_found))
 
-    if urls_found[0].endswith("s2_av.m3u8"):
-        urls_found = urls_found[::-1]
+    urls_found.sort(key=lambda url: url.split('/')[-1])
 
     return urls_found
 
