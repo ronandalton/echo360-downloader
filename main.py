@@ -187,13 +187,29 @@ def extract_lesson_ids(syllabus_json):
         lesson_ids = []
 
         for entry in syllabus_json['data']:
-            if entry['lesson']['hasContent'] is True and \
-                    entry['lesson']['hasVideo'] is True:
-                lesson_ids.append(entry['lesson']['lesson']['id'])
+            lesson_ids += extract_lesson_ids_recursive(entry)
 
         return lesson_ids
     except Exception:
         raise RuntimeError("Some fields missing (please report this!)")
+
+
+def extract_lesson_ids_recursive(syllabus_entry):
+    if syllabus_entry['type'] == 'SyllabusLessonType':
+        if syllabus_entry['lesson']['hasContent'] is True and \
+                syllabus_entry['lesson']['hasVideo'] is True:
+            return [syllabus_entry['lesson']['lesson']['id']]
+        else:
+            return []
+    elif syllabus_entry['type'] == 'SyllabusGroupType':
+        lesson_ids = []
+
+        for entry in syllabus_entry['lessons']:
+            lesson_ids += extract_lesson_ids_recursive(entry)
+
+        return lesson_ids
+    else:
+        return []
 
 
 def download_lessons(lesson_ids, output_dir, cookies,
