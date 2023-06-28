@@ -47,6 +47,10 @@ def run_downloader(experimental_downloader=False):
     if experimental_downloader:
         print("### Using experimental downloader ###")
 
+        if not yt_dlp_is_installed():
+            sys.exit("Error: yt-dlp executable not found (required by "
+                     "experimental downloader)")
+
     try:
         cookies = read_cookies_file(COOKIES_FILE, ECHO360_URL_NO_PREFIX)
 
@@ -61,6 +65,16 @@ def run_downloader(experimental_downloader=False):
         download_multiple_lessons(page_id, cookies, experimental_downloader)
     elif url_type == 'lesson':
         download_single_lesson(page_id, cookies, experimental_downloader)
+
+
+def yt_dlp_is_installed():
+    try:
+        subprocess.run([YT_DLP_EXECUTABLE, "--version"],
+                       stdout=subprocess.DEVNULL, check=True)
+    except Exception:
+        return False
+
+    return True
 
 
 def get_download_target_from_user():
@@ -355,10 +369,13 @@ def download_m3u8_videos(video_urls, output_dir, cookies_file):
 
         video_file_name = os.path.join(output_dir, f"hd{index + 1}.mp4")
 
-        subprocess.run([YT_DLP_EXECUTABLE, "--cookies", cookies_file,
-                        "--concurrent-fragments",
-                        str(CONCURRENT_DOWNLOAD_FRAGMENTS), "--output",
-                        video_file_name, video_url])
+        try:
+            subprocess.run([YT_DLP_EXECUTABLE, "--cookies", cookies_file,
+                            "--concurrent-fragments",
+                            str(CONCURRENT_DOWNLOAD_FRAGMENTS), "--output",
+                            video_file_name, video_url], check=True)
+        except Exception:
+            raise RuntimeError("External download command failed")
 
 
 if __name__ == '__main__':
