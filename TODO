@@ -4,3 +4,7 @@
 - Save cookies returned after each request. This might fix the 403 errors.
 - Add ability to pass URL on command line.
 - Maybe invoke x mode automatically when no downloadable videos are available.
+- Could have lecture folders with more descriptive names, eg:
+  001 - [Group Name - ]Lesson Name (Date Time)
+  This addresses situations where there are groups of lectures
+  and where one lecture has been broken up into multiple parts.
