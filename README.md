@@ -1,13 +1,14 @@
 # Echo360 Bulk Video Downloader
 
 This script allows you to download all of your lecture recordings
-from the Echo360 website (https://echo360.net.au), without having
+from the [Echo360](https://echo360.com/) website, without having
 to manually click on each download button separately.
 
 ## Limitations
 
-- Designed to work for New Zealand universities, may or may not work
-in other countries.
+- Designed to work for New Zealand universities. It should work for
+educational institutions in other countries, but I haven't been able
+to test it.
 - Downloading is only supported for courses that have the download
 option enabled. There is an experimental mode that you can use to
 attempt to bypass this restriction (see below for details), however

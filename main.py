@@ -5,7 +5,7 @@
     option if downloading is not enabled for your course.
     Note that yt-dlp and ffmpeg must be installed for this option to work. """
 
-# Last updated 2023-06-27
+# Last updated 2023-07-01
 
 import requests
 import os
@@ -24,14 +24,15 @@ DOWNLOAD_HD_VIDEO_FILES = True
 DOWNLOAD_AUDIO_FILES = False
 CONCURRENT_DOWNLOAD_FRAGMENTS = 40  # only applies to experimental downloader
 
-ECHO360_URL_NO_PREFIX = "echo360.net.au"
-ECHO360_URL = f"https://{ECHO360_URL_NO_PREFIX}"
-SECTION_URL_REGEX = r"^" + re.escape(ECHO360_URL) + r"/section/([^/]+)/home"
-LESSON_URL_REGEX = r"^" + re.escape(ECHO360_URL) + r"/lesson/([^/]+)/classroom"
-EXAMPLE_SECTION_URL = f"{ECHO360_URL}/section/xxxxxx/home"
-EXAMPLE_LESSON_URL = f"{ECHO360_URL}/lesson/xxxxxx/classroom"
-VIDEO_FILE_TYPE = "mp4"
+URL_REGEX = r"^(https://[^/]+)(/.*)$"
+SECTION_PATH_URL_REGEX = r"^/section/([^/]+)/home"
+LESSON_PATH_URL_REGEX = r"^/lesson/([^/]+)/classroom"
+EXAMPLE_SECTION_URL = "https://echo360.net.au/section/xxxxxx/home"
+EXAMPLE_LESSON_URL = "https://echo360.net.au/lesson/xxxxxx/classroom"
 M3U8_URL_REGEX = r'\\"uri\\":\\"(https:\\/\\/.*?\\/s[0-2]_(?:a|v|av).m3u8)\?'
+
+
+base_url = ""
 
 
 def main():
@@ -51,15 +52,12 @@ def run_downloader(experimental_downloader=False):
             sys.exit("Error: yt-dlp executable not found (required by "
                      "experimental downloader)")
 
-    try:
-        cookies = read_cookies_file(COOKIES_FILE, ECHO360_URL_NO_PREFIX)
+    url_type, page_id = get_download_target_from_user()
 
-        if len(cookies) == 0:
-            sys.exit(f"Error: No cookies for {ECHO360_URL_NO_PREFIX} found")
+    try:
+        cookies = read_cookies_file(COOKIES_FILE, base_url)
     except Exception as e:
         sys.exit(f"Error reading cookies file: {e}")
-
-    url_type, page_id = get_download_target_from_user()
 
     if url_type == 'section':
         download_multiple_lessons(page_id, cookies, experimental_downloader)
@@ -78,20 +76,28 @@ def yt_dlp_is_installed():
 
 
 def get_download_target_from_user():
+    global base_url
+
     while True:
         url = input("Enter URL: ").strip()
 
-        match = re.search(SECTION_URL_REGEX, url)
+        match = re.search(URL_REGEX, url)
 
         if match is not None:
-            section_id = match.group(1)
-            return 'section', section_id
+            base_url = match.group(1)
+            path_url = match.group(2)
 
-        match = re.search(LESSON_URL_REGEX, url)
+            path_match = re.search(SECTION_PATH_URL_REGEX, path_url)
 
-        if match is not None:
-            lesson_id = match.group(1)
-            return 'lesson', lesson_id
+            if path_match is not None:
+                section_id = path_match.group(1)
+                return 'section', section_id
+
+            path_match = re.search(LESSON_PATH_URL_REGEX, path_url)
+
+            if path_match is not None:
+                lesson_id = path_match.group(1)
+                return 'lesson', lesson_id
 
         print("Error: Invalid URL format.")
         print("       Expected a URL that looks like one of the following:")
@@ -142,6 +148,10 @@ def download_single_lesson(lesson_id, cookies, experimental_downloader):
 
 
 def read_cookies_file(file_name, target_domain):
+    target_domain_no_prefix = target_domain[len("https://"):]
+    if target_domain_no_prefix.startswith("www."):
+        target_domain_no_prefix = target_domain_no_prefix[len("www."):]
+
     cookies = dict()
 
     with open(file_name) as file:
@@ -171,18 +181,21 @@ def read_cookies_file(file_name, target_domain):
         if this_domain.startswith('.'):
             this_domain = this_domain[1:]
 
-        if this_domain != target_domain:
+        if this_domain != target_domain_no_prefix:
             continue
 
         key = items[5]
         value = items[6]
         cookies[key] = value
 
+    if len(cookies) == 0:
+        raise RuntimeError(f"No cookies for {target_domain_no_prefix} found")
+
     return cookies
 
 
 def download_syllabus(section_id, cookies):
-    url = f"{ECHO360_URL}/section/{section_id}/syllabus"
+    url = f"{base_url}/section/{section_id}/syllabus"
     response = requests.get(url, cookies=cookies)
 
     response.raise_for_status()
@@ -300,7 +313,7 @@ def get_media_download_links(lesson_id, cookies):
 
 
 def download_lesson_info(lesson_id, cookies):
-    url = f"{ECHO360_URL}/lesson/{lesson_id}/media"
+    url = f"{base_url}/lesson/{lesson_id}/media"
     response = requests.get(url, cookies=cookies)
 
     response.raise_for_status()
@@ -341,7 +354,7 @@ def download_lesson_experimental_version(lesson_id, output_dir, cookies,
 
 
 def get_m3u8_download_links(lesson_id, cookies):
-    page_url = f"{ECHO360_URL}/lesson/{lesson_id}/classroom"
+    page_url = f"{base_url}/lesson/{lesson_id}/classroom"
 
     response = requests.get(page_url, cookies=cookies)
 
