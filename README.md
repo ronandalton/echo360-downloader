@@ -31,8 +31,8 @@ it. Run the script with `python3 main.py`.
 5. Find the course you want to download the lectures for and copy the URL
 for the page that lists all the lectures. You can also download a single
 lecture by copying the URL while on the video page for that lecture.
-7. Paste the URL into the program and press enter.
-8. Lectures will be downloaded into the "output" folder.
+6. Paste the URL into the program and press enter.
+7. Lectures will be downloaded into the "output" folder.
 
 ## Experimental Mode
 
