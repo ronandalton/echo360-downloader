@@ -16,8 +16,8 @@ import subprocess
 from urllib.parse import urlparse, unquote
 
 
-OUTPUT_DIRECTORY = "output"
 DEFAULT_COOKIES_FILE = "cookies.txt"
+DEFAULT_OUTPUT_DIR = "output"
 YT_DLP_EXECUTABLE = "yt-dlp"
 # the following 3 options only apply to the basic downloader
 DOWNLOAD_SD_VIDEO_FILES = False
@@ -44,7 +44,8 @@ def main():
     except Exception as e:
         sys.exit(f"Error: {e}")
 
-    run_downloader(args.cookies_file_path, args.start_index, args.experimental_downloader)
+    run_downloader(args.cookies_file_path, args.output_dir,
+                   args.start_index, args.experimental_downloader)
 
 
 def parse_args():
@@ -59,6 +60,9 @@ def parse_args():
     parser.add_argument('-c', '--cookies-file', metavar='FILE', dest='cookies_file_path',
                         default=DEFAULT_COOKIES_FILE,
                         help=f'path to cookies file to load cookies from (default: {DEFAULT_COOKIES_FILE})')
+    parser.add_argument('-o', '--output-dir', metavar='PATH', dest='output_dir',
+                        default=DEFAULT_OUTPUT_DIR,
+                        help=f'directory to store downloaded lessons in (default: {DEFAULT_OUTPUT_DIR})')
 
     return parser.parse_args()
 
@@ -68,7 +72,8 @@ def validate_args(args):
         raise RuntimeError("Number of lessons to skip must not be less than zero")
 
 
-def run_downloader(cookies_file_path, start_index=0, experimental_downloader=False):
+def run_downloader(cookies_file_path, output_dir, start_index=0,
+                   experimental_downloader=False):
     if experimental_downloader:
         print("### Using experimental downloader ###")
 
@@ -85,10 +90,11 @@ def run_downloader(cookies_file_path, start_index=0, experimental_downloader=Fal
 
     if url_type == 'section':
         download_multiple_lessons(page_id, cookies, cookies_file_path,
-                                  start_index, experimental_downloader)
+                                  output_dir, start_index,
+                                  experimental_downloader)
     elif url_type == 'lesson':
         download_single_lesson(page_id, cookies, cookies_file_path,
-                               experimental_downloader)
+                               output_dir, experimental_downloader)
 
 
 def yt_dlp_is_installed():
@@ -132,7 +138,8 @@ def get_download_target_from_user():
 
 
 def download_multiple_lessons(section_id, cookies, cookies_file_path,
-                              start_index, experimental_downloader):
+                              output_dir, start_index,
+                              experimental_downloader):
     print("Getting download info...")
 
     try:
@@ -149,10 +156,10 @@ def download_multiple_lessons(section_id, cookies, cookies_file_path,
 
     try:
         if experimental_downloader:
-            download_lessons(lesson_ids, OUTPUT_DIRECTORY, cookies, start_index,
+            download_lessons(lesson_ids, output_dir, cookies, start_index,
                              True, cookies_file_path)
         else:
-            download_lessons(lesson_ids, OUTPUT_DIRECTORY, cookies, start_index)
+            download_lessons(lesson_ids, output_dir, cookies, start_index)
     except Exception as e:
         sys.exit(f"Error while downloading lectures: {e}")
 
@@ -160,15 +167,15 @@ def download_multiple_lessons(section_id, cookies, cookies_file_path,
 
 
 def download_single_lesson(lesson_id, cookies, cookies_file_path,
-                           experimental_downloader):
+                           output_dir, experimental_downloader):
     print("Downloading lecture:")
 
     try:
         if experimental_downloader:
-            download_lesson_experimental_version(lesson_id, OUTPUT_DIRECTORY,
+            download_lesson_experimental_version(lesson_id, output_dir,
                                                  cookies, cookies_file_path)
         else:
-            download_lesson_basic_version(lesson_id, OUTPUT_DIRECTORY, cookies)
+            download_lesson_basic_version(lesson_id, output_dir, cookies)
     except Exception as e:
         sys.exit(f"Error while downloading lecture: {e}")
 
