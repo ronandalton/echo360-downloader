@@ -39,7 +39,12 @@ base_url = ""
 def main():
     args = parse_args()
 
-    run_downloader(args.experimental_downloader)
+    try:
+        validate_args(args)
+    except Exception as e:
+        sys.exit(f"Error: {e}")
+
+    run_downloader(args.start_index, args.experimental_downloader)
 
 
 def parse_args():
@@ -49,11 +54,18 @@ def parse_args():
     parser.add_argument('-x', '--experimental-mode',
                         dest='experimental_downloader', action='store_true',
                         help='enable experimental mode (default: off)')
+    parser.add_argument('--skip', metavar='NUMBER', dest='start_index', type=int, default=0,
+                        help='number of lessons to skip when downloading multiple lessons')
 
     return parser.parse_args()
 
 
-def run_downloader(experimental_downloader=False):
+def validate_args(args):
+    if (args.start_index < 0):
+        raise RuntimeError("Number of lessons to skip must not be less than zero")
+
+
+def run_downloader(start_index=0, experimental_downloader=False):
     if experimental_downloader:
         print("### Using experimental downloader ###")
 
@@ -69,7 +81,7 @@ def run_downloader(experimental_downloader=False):
         sys.exit(f"Error reading cookies file: {e}")
 
     if url_type == 'section':
-        download_multiple_lessons(page_id, cookies, experimental_downloader)
+        download_multiple_lessons(page_id, cookies, start_index, experimental_downloader)
     elif url_type == 'lesson':
         download_single_lesson(page_id, cookies, experimental_downloader)
 
@@ -114,7 +126,8 @@ def get_download_target_from_user():
             print(f"       - {example_url}")
 
 
-def download_multiple_lessons(section_id, cookies, experimental_downloader):
+def download_multiple_lessons(section_id, cookies, start_index,
+                              experimental_downloader):
     print("Getting download info...")
 
     try:
@@ -131,10 +144,10 @@ def download_multiple_lessons(section_id, cookies, experimental_downloader):
 
     try:
         if experimental_downloader:
-            download_lessons(lesson_ids, OUTPUT_DIRECTORY, cookies, True,
-                             COOKIES_FILE)
+            download_lessons(lesson_ids, OUTPUT_DIRECTORY, cookies, start_index,
+                             True, COOKIES_FILE)
         else:
-            download_lessons(lesson_ids, OUTPUT_DIRECTORY, cookies)
+            download_lessons(lesson_ids, OUTPUT_DIRECTORY, cookies, start_index)
     except Exception as e:
         sys.exit(f"Error while downloading lectures: {e}")
 
@@ -248,12 +261,14 @@ def extract_lesson_ids_recursive(syllabus_entry):
         return []
 
 
-def download_lessons(lesson_ids, output_dir, cookies,
+def download_lessons(lesson_ids, output_dir, cookies, start_index=0,
                      experimental_version=False, cookies_file=None):
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
 
-    for lesson_index, lesson_id in enumerate(lesson_ids):
+    for lesson_index in range(start_index, len(lesson_ids)):
+        lesson_id = lesson_ids[lesson_index]
+
         print(f"Lecture {lesson_index + 1}:")
 
         lesson_output_dir = os.path.join(output_dir,
