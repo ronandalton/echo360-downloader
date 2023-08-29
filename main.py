@@ -17,7 +17,7 @@ from urllib.parse import urlparse, unquote
 
 
 OUTPUT_DIRECTORY = "output"
-COOKIES_FILE = "cookies.txt"
+DEFAULT_COOKIES_FILE = "cookies.txt"
 YT_DLP_EXECUTABLE = "yt-dlp"
 # the following 3 options only apply to the basic downloader
 DOWNLOAD_SD_VIDEO_FILES = False
@@ -44,7 +44,7 @@ def main():
     except Exception as e:
         sys.exit(f"Error: {e}")
 
-    run_downloader(args.start_index, args.experimental_downloader)
+    run_downloader(args.cookies_file_path, args.start_index, args.experimental_downloader)
 
 
 def parse_args():
@@ -56,6 +56,9 @@ def parse_args():
                         help='enable experimental mode (default: off)')
     parser.add_argument('--skip', metavar='NUMBER', dest='start_index', type=int, default=0,
                         help='number of lessons to skip when downloading multiple lessons')
+    parser.add_argument('-c', '--cookies-file', metavar='FILE', dest='cookies_file_path',
+                        default=DEFAULT_COOKIES_FILE,
+                        help=f'path to cookies file to load cookies from (default: {DEFAULT_COOKIES_FILE})')
 
     return parser.parse_args()
 
@@ -65,7 +68,7 @@ def validate_args(args):
         raise RuntimeError("Number of lessons to skip must not be less than zero")
 
 
-def run_downloader(start_index=0, experimental_downloader=False):
+def run_downloader(cookies_file_path, start_index=0, experimental_downloader=False):
     if experimental_downloader:
         print("### Using experimental downloader ###")
 
@@ -76,14 +79,16 @@ def run_downloader(start_index=0, experimental_downloader=False):
     url_type, page_id = get_download_target_from_user()
 
     try:
-        cookies = read_cookies_file(COOKIES_FILE, base_url)
+        cookies = read_cookies_file(cookies_file_path, base_url)
     except Exception as e:
         sys.exit(f"Error reading cookies file: {e}")
 
     if url_type == 'section':
-        download_multiple_lessons(page_id, cookies, start_index, experimental_downloader)
+        download_multiple_lessons(page_id, cookies, cookies_file_path,
+                                  start_index, experimental_downloader)
     elif url_type == 'lesson':
-        download_single_lesson(page_id, cookies, experimental_downloader)
+        download_single_lesson(page_id, cookies, cookies_file_path,
+                               experimental_downloader)
 
 
 def yt_dlp_is_installed():
@@ -126,8 +131,8 @@ def get_download_target_from_user():
             print(f"       - {example_url}")
 
 
-def download_multiple_lessons(section_id, cookies, start_index,
-                              experimental_downloader):
+def download_multiple_lessons(section_id, cookies, cookies_file_path,
+                              start_index, experimental_downloader):
     print("Getting download info...")
 
     try:
@@ -145,7 +150,7 @@ def download_multiple_lessons(section_id, cookies, start_index,
     try:
         if experimental_downloader:
             download_lessons(lesson_ids, OUTPUT_DIRECTORY, cookies, start_index,
-                             True, COOKIES_FILE)
+                             True, cookies_file_path)
         else:
             download_lessons(lesson_ids, OUTPUT_DIRECTORY, cookies, start_index)
     except Exception as e:
@@ -154,13 +159,14 @@ def download_multiple_lessons(section_id, cookies, start_index,
     print("Download complete!")
 
 
-def download_single_lesson(lesson_id, cookies, experimental_downloader):
+def download_single_lesson(lesson_id, cookies, cookies_file_path,
+                           experimental_downloader):
     print("Downloading lecture:")
 
     try:
         if experimental_downloader:
             download_lesson_experimental_version(lesson_id, OUTPUT_DIRECTORY,
-                                                 cookies, COOKIES_FILE)
+                                                 cookies, cookies_file_path)
         else:
             download_lesson_basic_version(lesson_id, OUTPUT_DIRECTORY, cookies)
     except Exception as e:
@@ -169,14 +175,14 @@ def download_single_lesson(lesson_id, cookies, experimental_downloader):
     print("Download complete!")
 
 
-def read_cookies_file(file_name, target_domain):
+def read_cookies_file(file_path, target_domain):
     target_domain_no_prefix = target_domain[len("https://"):]
     if target_domain_no_prefix.startswith("www."):
         target_domain_no_prefix = target_domain_no_prefix[len("www."):]
 
     cookies = dict()
 
-    with open(file_name) as file:
+    with open(file_path) as file:
         data = file.read().splitlines()
 
     if len(data) == 0:
@@ -262,7 +268,7 @@ def extract_lesson_ids_recursive(syllabus_entry):
 
 
 def download_lessons(lesson_ids, output_dir, cookies, start_index=0,
-                     experimental_version=False, cookies_file=None):
+                     experimental_version=False, cookies_file_path=None):
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
 
@@ -276,7 +282,7 @@ def download_lessons(lesson_ids, output_dir, cookies, start_index=0,
 
         if experimental_version:
             download_lesson_experimental_version(lesson_id, lesson_output_dir,
-                                                 cookies, cookies_file)
+                                                 cookies, cookies_file_path)
         else:
             download_lesson_basic_version(lesson_id, lesson_output_dir,
                                           cookies)
@@ -369,12 +375,12 @@ def download_medias(media_urls, output_dir, cookies):
 
 
 def download_lesson_experimental_version(lesson_id, output_dir, cookies,
-                                         cookies_file):
+                                         cookies_file_path):
     print("    Downloading webpage...")
     lesson_video_urls = get_m3u8_download_links(lesson_id, cookies)
 
     download_m3u8_videos(lesson_video_urls, output_dir,
-                         cookies_file)
+                         cookies_file_path)
 
 
 def get_m3u8_download_links(lesson_id, cookies):
@@ -397,7 +403,7 @@ def get_m3u8_download_links(lesson_id, cookies):
     return urls_found
 
 
-def download_m3u8_videos(video_urls, output_dir, cookies_file):
+def download_m3u8_videos(video_urls, output_dir, cookies_file_path):
     if not os.path.isdir(output_dir):
         os.makedirs(output_dir)
 
@@ -407,7 +413,7 @@ def download_m3u8_videos(video_urls, output_dir, cookies_file):
         video_file_name = os.path.join(output_dir, f"hd{index + 1}.mp4")
 
         try:
-            subprocess.run([YT_DLP_EXECUTABLE, "--cookies", cookies_file,
+            subprocess.run([YT_DLP_EXECUTABLE, "--cookies", cookies_file_path,
                             "--concurrent-fragments",
                             str(CONCURRENT_DOWNLOAD_FRAGMENTS), "--output",
                             video_file_name, video_url], check=True)
