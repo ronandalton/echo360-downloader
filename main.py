@@ -5,8 +5,9 @@
     option if downloading is not enabled for your course.
     Note that yt-dlp and ffmpeg must be installed for this option to work. """
 
-# Last updated 2023-07-01
+# Last updated 2023-08-29
 
+import argparse
 import requests
 import os
 import sys
@@ -36,12 +37,20 @@ base_url = ""
 
 
 def main():
-    args = sys.argv[1:]
+    args = parse_args()
 
-    if "-x" in args:
-        run_downloader(True)
-    else:
-        run_downloader(False)
+    run_downloader(args.experimental_downloader)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+            description="Download Echo360 lecture recordings.")
+
+    parser.add_argument('-x', '--experimental-mode',
+                        dest='experimental_downloader', action='store_true',
+                        help='enable experimental mode (default: off)')
+
+    return parser.parse_args()
 
 
 def run_downloader(experimental_downloader=False):
