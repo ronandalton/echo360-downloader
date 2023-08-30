@@ -30,6 +30,9 @@ SECTION_PATH_URL_REGEX = r"^/section/([^/]+)/home"
 LESSON_PATH_URL_REGEX = r"^/lesson/([^/]+)/classroom"
 EXAMPLE_SECTION_URL = "https://echo360.net.au/section/xxxxxx/home"
 EXAMPLE_LESSON_URL = "https://echo360.net.au/lesson/xxxxxx/classroom"
+URL_HELPER_MESSAGE = "    Expected a URL that looks like one of the following:" \
+        + f"\n    - {EXAMPLE_SECTION_URL}" \
+        + f"\n    - {EXAMPLE_LESSON_URL}"
 M3U8_URL_REGEX = r'\\"uri\\":\\"(https:\\/\\/.*?\\/s[0-2]_(?:a|v|av).m3u8)\?'
 
 
@@ -44,7 +47,7 @@ def main():
     except Exception as e:
         sys.exit(f"Error: {e}")
 
-    run_downloader(args.cookies_file_path, args.output_dir,
+    run_downloader(args.url, args.cookies_file_path, args.output_dir,
                    args.start_index, args.experimental_downloader)
 
 
@@ -52,6 +55,8 @@ def parse_args():
     parser = argparse.ArgumentParser(
             description="Download Echo360 lecture recordings.")
 
+    parser.add_argument('url', nargs='?', metavar='URL', default=None,
+                        help='Echo360 URL to download (leave blank to be prompted for this)')
     parser.add_argument('-x', '--experimental-mode',
                         dest='experimental_downloader', action='store_true',
                         help='enable experimental mode (default: off)')
@@ -72,8 +77,10 @@ def validate_args(args):
         raise RuntimeError("Number of lessons to skip must not be less than zero")
 
 
-def run_downloader(cookies_file_path, output_dir, start_index=0,
+def run_downloader(url, cookies_file_path, output_dir, start_index=0,
                    experimental_downloader=False):
+    global base_url
+
     if experimental_downloader:
         print("### Using experimental downloader ###")
 
@@ -81,7 +88,13 @@ def run_downloader(cookies_file_path, output_dir, start_index=0,
             sys.exit("Error: yt-dlp executable not found (required by "
                      "experimental downloader)")
 
-    url_type, page_id = get_download_target_from_user()
+    if url is None:
+        base_url, url_type, page_id = get_download_target_from_user()
+    else:
+        try:
+            base_url, url_type, page_id = parse_url(url)
+        except Exception as e:
+            sys.exit(f"Error: {e}\n" + URL_HELPER_MESSAGE)
 
     try:
         cookies = read_cookies_file(cookies_file_path, base_url)
@@ -108,33 +121,38 @@ def yt_dlp_is_installed():
 
 
 def get_download_target_from_user():
-    global base_url
-
     while True:
         url = input("Enter URL: ").strip()
 
-        match = re.search(URL_REGEX, url)
+        try:
+            return parse_url(url)
+        except Exception:
+            pass
 
-        if match is not None:
-            base_url = match.group(1)
-            path_url = match.group(2)
+        print("Error: Invalid URL format")
+        print(URL_HELPER_MESSAGE)
 
-            path_match = re.search(SECTION_PATH_URL_REGEX, path_url)
 
-            if path_match is not None:
-                section_id = path_match.group(1)
-                return 'section', section_id
+def parse_url(url):
+    match = re.search(URL_REGEX, url)
 
-            path_match = re.search(LESSON_PATH_URL_REGEX, path_url)
+    if match is not None:
+        base_url = match.group(1)
+        path_url = match.group(2)
 
-            if path_match is not None:
-                lesson_id = path_match.group(1)
-                return 'lesson', lesson_id
+        path_match = re.search(SECTION_PATH_URL_REGEX, path_url)
 
-        print("Error: Invalid URL format.")
-        print("       Expected a URL that looks like one of the following:")
-        for example_url in [EXAMPLE_SECTION_URL, EXAMPLE_LESSON_URL]:
-            print(f"       - {example_url}")
+        if path_match is not None:
+            section_id = path_match.group(1)
+            return base_url, 'section', section_id
+
+        path_match = re.search(LESSON_PATH_URL_REGEX, path_url)
+
+        if path_match is not None:
+            lesson_id = path_match.group(1)
+            return base_url, 'lesson', lesson_id
+
+    raise ValueError("Invalid URL format")
 
 
 def download_multiple_lessons(section_id, cookies, cookies_file_path,
