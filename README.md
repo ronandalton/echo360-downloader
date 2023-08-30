@@ -47,9 +47,9 @@ The following command line arguments are supported:
 |-----------------------------------|------------------------------------------------------------------|
 | `-h` / `--help`                   | show a help message and exit                                     |
 | `-x` / `--experimental-mode`      | enable experimental mode (default: off)                          |
-| `--skip NUMBER`                   | number of lessons to skip when downloading multiple lessons      |
 | `-c FILE` / `--cookies-file FILE` | path to cookies file to load cookies from (default: cookies.txt) |
 | `-o PATH` / `--output-dir PATH`   | directory to store downloaded lessons in (default: output)       |
+| `--skip NUMBER`                   | number of lessons to skip when downloading multiple lessons      |
 
 ## Experimental Mode
 

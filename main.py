@@ -60,14 +60,14 @@ def parse_args():
     parser.add_argument('-x', '--experimental-mode',
                         dest='experimental_downloader', action='store_true',
                         help='enable experimental mode (default: off)')
-    parser.add_argument('--skip', metavar='NUMBER', dest='start_index', type=int, default=0,
-                        help='number of lessons to skip when downloading multiple lessons')
     parser.add_argument('-c', '--cookies-file', metavar='FILE', dest='cookies_file_path',
                         default=DEFAULT_COOKIES_FILE,
                         help=f'path to cookies file to load cookies from (default: {DEFAULT_COOKIES_FILE})')
     parser.add_argument('-o', '--output-dir', metavar='PATH', dest='output_dir',
                         default=DEFAULT_OUTPUT_DIR,
                         help=f'directory to store downloaded lessons in (default: {DEFAULT_OUTPUT_DIR})')
+    parser.add_argument('--skip', metavar='NUMBER', dest='start_index', type=int, default=0,
+                        help='number of lessons to skip when downloading multiple lessons')
 
     return parser.parse_args()
 
