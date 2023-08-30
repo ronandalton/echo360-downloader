@@ -13,7 +13,7 @@ each download button separately.
   this restriction (see below for details), however I would recommend just
   emailing your lecturer nicely and asking them to enable downloads :)
 
-## Usage
+## Getting Started
 
 1. Download the script (main.py) and place it in a new directory somewhere.
 Note that you will need Python installed in order to run the script.
@@ -32,6 +32,25 @@ copying the URL while on the video page for that lecture.
 6. Paste the URL into the program and press enter.
 7. Lectures will be downloaded into the "output" folder.
 
+## Usage
+
+`python3 main.py [URL] [OPTIONS]...`
+
+Note that if a URL is not provided as a command line argument, the user will be
+prompted to enter one interactively.
+
+## Options
+
+The following command line arguments are supported:
+
+| Option                            | Description                                                      |
+|-----------------------------------|------------------------------------------------------------------|
+| `-h` / `--help`                   | show a help message and exit                                     |
+| `-x` / `--experimental-mode`      | enable experimental mode (default: off)                          |
+| `--skip NUMBER`                   | number of lessons to skip when downloading multiple lessons      |
+| `-c FILE` / `--cookies-file FILE` | path to cookies file to load cookies from (default: cookies.txt) |
+| `-o PATH` / `--output-dir PATH`   | directory to store downloaded lessons in (default: output)       |
+
 ## Experimental Mode
 
 There is a new experimental mode that attempts to download lectures, even if
@@ -42,11 +61,6 @@ to have [yt-dlp](https://github.com/yt-dlp/yt-dlp) and
 [ffmpeg](https://ffmpeg.org/) installed for this to work. If you get 403
 errors, it is probably an issue with your cookies file. Try clicking into a
 video first and then creating a cookies.txt file, or logging out and back in.
-
-## Config
-
-There are no command line configuration options at the moment, but there are
-some constants at the top of the script that can be set.
 
 ## Issues
 
