@@ -327,14 +327,15 @@ def get_media_download_links(lesson_id, cookies):
     lesson_info = download_lesson_info(lesson_id, cookies)
 
     try:
-        if lesson_info['data'][0]['hasContent'] is False or \
-                lesson_info['data'][0]['hasVideo'] is False or \
-                lesson_info['data'][0]['video']['media']['status'] != "Processed":
+        data = lesson_info['data'][0]
+
+        if data['hasContent'] is False or data['hasVideo'] is False or \
+                data['video']['media']['status'] != "Processed":
             return []
 
         media_urls = []
 
-        media = lesson_info['data'][0]['video']['media']['media']['current']
+        media = data['video']['media']['media']['current']
 
         for key in ["primaryFiles", "secondaryFiles", "tertiaryFiles",
                     "quaternaryFiles"]:
