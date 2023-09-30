@@ -5,7 +5,7 @@
     option if downloading is not enabled for your course.
     Note that yt-dlp and ffmpeg must be installed for this option to work. """
 
-# Last updated 2023-08-29
+# Last updated 2023-09-30
 
 import argparse
 import requests
@@ -328,7 +328,8 @@ def get_media_download_links(lesson_id, cookies):
 
     try:
         if lesson_info['data'][0]['hasContent'] is False or \
-                lesson_info['data'][0]['hasVideo'] is False:
+                lesson_info['data'][0]['hasVideo'] is False or \
+                lesson_info['data'][0]['video']['media']['status'] != "Processed":
             return []
 
         media_urls = []
