@@ -32,6 +32,10 @@ copying the URL while on the video page for that lecture.
 6. Paste the URL into the program and press enter.
 7. Lectures will be downloaded into the "output" folder.
 
+Note: If at any point you get a `403 Client Error`, try downloading the
+cookies.txt file again. You can use the `--skip` option (see below) to restart
+where you left off if needed.
+
 ## Usage
 
 `python3 main.py [URL] [OPTIONS]...`
